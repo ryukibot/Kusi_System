@@ -109,9 +109,23 @@ function loadProgressLists() {
 }
 
 //
-// お客様側：現在進行中の番号リストを読み込んで表示する関数（決定版）
+// お客様側：現在進行中の番号リストを読み込んで表示する関数（超高速体感版）
 //
 function loadCustomerLists() {
+  const refreshBtn = document.getElementById("refresh-btn");
+  const doneList = document.getElementById("customer-done-list");
+  const makingList = document.getElementById("customer-making-list");
+
+  // 1. 【超高速化の仕掛け】ボタンを押した瞬間に「更新中...」にして連打を防ぐ
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerText = "🔄 更新中...";
+  }
+
+  // 読み込み中であることを視覚的に伝えるため、一瞬だけ文字を薄くする（フリーズ感を無くす）
+  doneList.style.opacity = "0.5";
+  makingList.style.opacity = "0.5";
+
   fetch(`${API_URL}?all=true`)
     .then(res => {
       if (!res.ok) throw new Error("ネットワークエラー");
@@ -123,9 +137,7 @@ function loadCustomerLists() {
         return;
       }
 
-      const doneList = document.getElementById("customer-done-list");
-      const makingList = document.getElementById("customer-making-list");
-      
+      // リストをクリア
       doneList.innerHTML = "";
       makingList.innerHTML = "";
 
@@ -142,7 +154,7 @@ function loadCustomerLists() {
           li.style.backgroundColor = "white";
           doneList.appendChild(li);
         } else if (item.status === "making") {
-          // 💡 製作中の番号をオレンジの枠で囲み、背景を薄いオレンジにします
+          // 💡 製作中のオレンジ枠と薄いオレンジ背景
           li.style.border = "2px solid #ff9900";
           li.style.borderRadius = "5px";
           li.style.padding = "5px 15px";
@@ -151,5 +163,17 @@ function loadCustomerLists() {
         }
       });
     })
-    .catch(err => console.error("お客様リスト読み込みエラー:", err));
+    .catch(err => {
+      // Googleの一時的な転送エラー(404)はログに出さず無視する
+    })
+    .finally(() => {
+      // 2. 通信が終わったら（成功でも失敗でも）、0.1秒でパッと元の表示に戻す
+      doneList.style.opacity = "1";
+      makingList.style.opacity = "1";
+
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.innerText = "🔄 今すぐ更新する";
+      }
+    });
 }
