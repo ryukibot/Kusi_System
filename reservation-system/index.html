@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【お客様用】注文状況のご案内</title>
+</head>
+<body style="font-family: sans-serif; text-align: center; padding: 20px;">
+
+  <h1>🎉 現在の状況 🎉</h1>
+  <button id="refresh-btn" onclick="loadCustomerLists()" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; font-size: 1rem; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    🔄 今すぐ更新する
+  </button>
+
+  <div id="customer-container" style="display: flex; flex-direction: column; gap: 20px; max-width: 500px; margin: 0 auto;">
+    
+    <!-- 完成（お呼び出し）リスト -->
+    <div style="border: 2px solid #00cc66; background-color: #f0fff5; padding: 15px; border-radius: 10px;">
+      <h2 style="color: #00cc66; margin-top: 0;">✨ できあがり ✨</h2>
+      <p style="font-size: 0.9rem; color: #555;">受付までお越しください</p>
+      <ul id="customer-done-list" style="font-size: 1.8rem; font-weight: bold; color: #00cc66; list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+        <!-- ここに完成した番号が並びます -->
+      </ul>
+    </div>
+    
+    <!-- 製作中リスト -->
+    <div style="border: 1px solid #ccc; background-color: #fafafa; padding: 15px; border-radius: 10px;">
+      <h3 style="color: #ff9900; margin-top: 0;">🛠️ ただいま製作中 🛠️</h3>
+      <ul id="customer-making-list" style="font-size: 1.3rem; font-weight: bold; color: #ff9900; list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+        <!-- ここに製作中の番号が並びます -->
+      </ul>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
