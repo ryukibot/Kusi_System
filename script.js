@@ -24,21 +24,43 @@ window.addEventListener("DOMContentLoaded", () => {
   // お客様画面（index.html）を開いた場合
   if (document.getElementById("customer-done-list")) {
     loadCustomerLists(); // 開いた瞬間に即座に1回読み込む！
-    setInterval(loadCustomerLists, 30000); // その後は30秒ごとに自動更新
+    setInterval(loadCustomerLists, 10000); // その後は10秒ごとに自動更新
   }
 });
 
 //
-// 運営側：状態を更新する関数（超高速・連打防止版）
+// 運営側：状態を更新する関数（1〜40限定・全角半角補正・自動クリア・連打防止版）
 //
 function updateStatus(status) {
-  const id = document.getElementById("num").value;
-  if (!id) {
-    alert("番号を入力してください");
+  let inputElement = document.getElementById("num");
+  let rawValue = inputElement.value;
+
+  // 1. 全角数字を半角数字に自動変換する
+  let correctedValue = rawValue.replace(/[０-９]/g, function(s) {
+    return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+  });
+
+  // 2. 数字以外の不要な文字（英字、漢字、ひらがな等）をすべて強制的に消去する
+  correctedValue = correctedValue.replace(/[^0-9]/g, "");
+
+  // 補正した結果、何も残らなかった（空っぽ）の場合は処理を中断する
+  if (!correctedValue) {
+    alert("有効な「数字（番号）」を入力してください");
+    inputElement.value = ""; // 入力欄をクリア
     return;
   }
 
-  // 1. 連打防止のためにボタンを無効化
+  // 実際に処理で使うID（補正後の数字）
+  const id = Number(correctedValue);
+
+  // 💡 【追加機能】1から40以外の数字を完全に弾くガードレール
+  if (id < 1 || id > 40) {
+    alert("エラー：番号は 1番 から 40番 の間で入力してください！");
+    inputElement.value = ""; // 入力欄をクリア
+    return; // ここで処理を終了し、GASへの送信をストップします
+  }
+
+  // 3. 連打防止のためにボタンを無効化
   const buttons = document.querySelectorAll("button");
   buttons.forEach(btn => btn.disabled = true);
 
@@ -61,10 +83,10 @@ function updateStatus(status) {
     doneList.appendChild(newLi);
   }
 
-  // 入力欄をクリアして、次の番号をすぐ打てるようにする
-  document.getElementById("num").value = "";
+  // 正しく実行が開始されたので、入力欄を一瞬で空（リセット）にする
+  inputElement.value = "";
 
-  // 2. 裏側で静かにGoogle Apps Scriptへデータを送る
+  // 4. 裏側で静かにGoogle Apps Scriptへデータを送る
   const form = new URLSearchParams();
   form.append("id", id);
   form.append("status", status);
@@ -92,21 +114,29 @@ function updateStatus(status) {
 }
 
 //
-// 運営側：現在進行中の番号リストを読み込んで表示する関数
+// 運営側：現在進行中の番号リストを読み込んで表示する関数（クリア強化版）
 //
 function loadProgressLists() {
+  const makingList = document.getElementById("making-list");
+  const doneList = document.getElementById("done-list");
+  
+  if (!makingList || !doneList) return;
+
+  // 💡 リストの中身だけでなく、残ってしまったゴミ要素も完全に全消しする
+  makingList.innerHTML = "";
+  doneList.innerHTML = "";
+
   fetch(`${API_URL}?all=true`)
     .then(res => res.json())
     .then(data => {
-      const makingList = document.getElementById("making-list");
-      const doneList = document.getElementById("done-list");
-      
-      makingList.innerHTML = "";
-      doneList.innerHTML = "";
-
-      if (data.error || !Array.isArray(data)) return;
+      if (data.error || !Array.isArray(data)) {
+        console.error("リスト読み込みエラー:", data.error);
+        return;
+      }
 
       data.forEach(item => {
+        if (!item || !item.id) return; // 空データ対策
+
         const li = document.createElement("li");
         li.innerText = `番号 【${item.id}】`;
 
@@ -117,7 +147,9 @@ function loadProgressLists() {
         }
       });
     })
-    .catch(err => console.error("リスト読み込みエラー:", err));
+    .catch(err => {
+      console.error("リスト同期エラー:", err);
+    });
 }
 
 //
