@@ -1,95 +1,79 @@
+// 【重要】ここにあなたの最新の GAS ウェブアプリ URL を貼り付けてください
+const API_URL = "https://script.google.com/macros/s/AKfycbwBCl08U2-km97ObWfRmqZ6vioS2Y7kVEHF9TtSknmPK1_csWJypwunfKyTIchuzqXPUg/exec";
+
 const ADMIN_PASSWORD = "kusi1114"; 
+
+// 順番待ち（キュー）のための配列と状態管理
+let requestQueue = [];
+let isProcessingQueue = false;
+
+// 💡 運営側の「同期ボタン」用に、直前のリストの中身（テキスト）を記憶する変数
+let lastProgressDataString = "";
 
 function checkPassword() {
   const input = document.getElementById("admin-pass").value;
   if (input === ADMIN_PASSWORD) {
-    // 正解ならロック画面を消して、管理画面を表示する
     document.getElementById("lock-screen").style.display = "none";
-    // 運営用リストを読み込む
     if (typeof loadProgressLists === "function") loadProgressLists();
   } else {
     alert("パスワードが違います！");
     document.getElementById("admin-pass").value = "";
   }
 }
-// ここをあなたの GAS の URL に書き換える
-const API_URL = "https://script.google.com/macros/s/AKfycbyaIbzsNSW2M2qrSf23ca-OeDzG6nzO36mG2j1aZPnjh6fm95-zY_bXb6INMo07AdMo2g/exec";
 
-// 画面が開かれたときに、自動で適切な初期処理を行う
+// 画面が開かれたときの初期処理
 window.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("progress-container")) {
-    // 💡 修正2：パスワードを入れる前は何も読み込ませない（空っぽにします）
-  }
-  
-  // お客様画面（index.html）を開いた場合
   if (document.getElementById("customer-done-list")) {
-    loadCustomerLists(); // 開いた瞬間に即座に1回読み込む！
-    setInterval(loadCustomerLists, 10000); // その後は10秒ごとに自動更新
+    loadCustomerLists(false);
+    setInterval(() => { loadCustomerLists(false); }, 6000); 
   }
 });
 
-//
-// 運営側：状態を更新する関数（1〜40限定・全角半角補正・自動クリア・連打防止版）
-//
+// 運営側：状態を更新する関数
 function updateStatus(status) {
   let inputElement = document.getElementById("num");
   let rawValue = inputElement.value;
 
-  // 1. 全角数字を半角数字に自動変換する
   let correctedValue = rawValue.replace(/[０-９]/g, function(s) {
     return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
   });
-
-  // 2. 数字以外の不要な文字（英字、漢字、ひらがな等）をすべて強制的に消去する
   correctedValue = correctedValue.replace(/[^0-9]/g, "");
 
-  // 補正した結果、何も残らなかった（空っぽ）の場合は処理を中断する
   if (!correctedValue) {
     alert("有効な「数字（番号）」を入力してください");
-    inputElement.value = ""; // 入力欄をクリア
+    inputElement.value = "";
     return;
   }
 
-  // 実際に処理で使うID（補正後の数字）
   const id = Number(correctedValue);
 
-  // 💡 【追加機能】1から40以外の数字を完全に弾くガードレール
   if (id < 1 || id > 40) {
     alert("エラー：番号は 1番 から 40番 の間で入力してください！");
-    inputElement.value = ""; // 入力欄をクリア
-    return; // ここで処理を終了し、GASへの送信をストップします
+    inputElement.value = "";
+    return;
   }
 
-  // 3. 連打防止のためにボタンを無効化
-  const buttons = document.querySelectorAll("button");
-  buttons.forEach(btn => btn.disabled = true);
+  const isDuplicate = requestQueue.some(req => req.id === id && req.status === status);
+  if (isDuplicate) return;
 
-  // 【超高速化】Googleの返事を待たずに、今押した番号を即座に画面のリストに移動させる
-  const makingList = document.getElementById("making-list");
-  const doneList = document.getElementById("done-list");
-  
-  // 既存のリストから、今から更新するIDの古い表示を一度消す
-  document.querySelectorAll("#progress-container li").forEach(li => {
-    if (li.innerText === `番号 【${id}】`) li.remove();
-  });
-
-  // 新しいリストへ即座に追加
-  const newLi = document.createElement("li");
-  newLi.innerText = `番号 【${id}】`;
-  
-  if (status === "making") {
-    makingList.appendChild(newLi);
-  } else if (status === "done") {
-    doneList.appendChild(newLi);
-  }
-
-  // 正しく実行が開始されたので、入力欄を一瞬で空（リセット）にする
   inputElement.value = "";
+  const uniqueId = "req-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  addWaitingLogMessage(uniqueId, id, status);
+  requestQueue.push({ uniqueId: uniqueId, id: id, status: status });
+  processNextRequest();
+}
 
-  // 4. 裏側で静かにGoogle Apps Scriptへデータを送る
+// 裏側でデータを順番待ちさせて送る関数
+function processNextRequest() {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+
+  isProcessingQueue = true;
+  const currentRequest = requestQueue.shift();
+  updateLogToProcessing(currentRequest.uniqueId);
+
   const form = new URLSearchParams();
-  form.append("id", id);
-  form.append("status", status);
+  form.append("id", currentRequest.id);
+  form.append("status", currentRequest.status);
 
   fetch(API_URL, {
     method: "POST",
@@ -99,80 +83,183 @@ function updateStatus(status) {
   .then(data => {
     if (data.error) {
       alert(`エラーが発生しました: ${data.error}`);
-      loadProgressLists();
+      return;
     }
+
+    // 通常のボタン操作時：changedがfalseなら「変更なし」、trueなら「完了」のログを出す
+    if (data.changed === false) {
+      updateLogToAlreadyLatest(currentRequest.uniqueId, currentRequest.id, currentRequest.status);
+    } else {
+      updateLogToSuccess(currentRequest.uniqueId, currentRequest.id, currentRequest.status);
+    }
+
+    // 静かに画面を最新に同期する（ここでは同期ボタンのログは出さないように別管理にします）
+    loadProgressLists(false); 
   })
   .catch(error => {
     console.error("通信エラー:", error);
-    alert("通信に失敗しました。");
-    loadProgressLists();
+    updateLogToFailure(currentRequest.uniqueId, currentRequest.id);
+    loadProgressLists(false);
   })
   .finally(() => {
-    // 通信が終わったらボタンをすぐ使えるように戻す
-    buttons.forEach(btn => btn.disabled = false);
+    setTimeout(() => {
+      isProcessingQueue = false;
+      processNextRequest(); 
+    }, 500);
   });
 }
 
-//
-// 運営側：現在進行中の番号リストを読み込んで表示する関数（クリア強化版）
-//
-function loadProgressLists() {
+// 運営側：ログ追加・書き換え関数群
+function addWaitingLogMessage(uniqueId, id, status) {
+  const container = document.getElementById("action-log-container");
+  if (!container) return;
+  let statusText = status === "making" ? "製作中" : status === "done" ? "完成" : "お渡し";
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const logItem = document.createElement("div");
+  logItem.id = uniqueId;
+  logItem.style.padding = "6px 10px";
+  logItem.style.backgroundColor = "#fff";
+  logItem.style.borderLeft = "4px solid #6c757d";
+  logItem.style.borderRadius = "4px";
+  logItem.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${timeStr}]</span> <strong>【${id}番】</strong> を ${statusText} へ <span style="color:#6c757d; font-weight:bold;">⌛ 待機中...</span>`;
+  container.insertBefore(logItem, container.firstChild);
+  if (container.children.length > 5) container.lastChild.remove();
+}
+function updateLogToProcessing(uniqueId) {
+  const logItem = document.getElementById(uniqueId);
+  if (!logItem) return;
+  logItem.style.borderLeft = "4px solid #ffc107";
+  logItem.innerHTML = logItem.innerHTML.replace("⌛ 待機中...", "<span style='color:#ffc107; font-weight:bold;'>🔄 更新中...</span>");
+}
+function updateLogToSuccess(uniqueId, id, status) {
+  const logItem = document.getElementById(uniqueId);
+  if (!logItem) return;
+  let statusText = status === "making" ? "製作中" : status === "done" ? "完成" : "お渡し";
+  let statusColor = status === "making" ? "#ff9900" : status === "done" ? "#00cc66" : "#666";
+  const now = new Date();
+  const formattedDate = `${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  logItem.style.borderLeft = `4px solid ${statusColor}`;
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> <strong>【${id}番】</strong> を <span style="color:${statusColor}; font-weight:bold;">${statusText}状態へ完了</span>`;
+}
+function updateLogToAlreadyLatest(uniqueId, id, status) {
+  const logItem = document.getElementById(uniqueId);
+  if (!logItem) return;
+  let statusText = status === "making" ? "製作中" : status === "done" ? "完成" : "お渡し";
+  const now = new Date();
+  const formattedDate = `${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  logItem.style.borderLeft = "4px solid #adb5bd"; 
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> <strong>【${id}番】</strong> はすでに <span style="color:#6c757d; font-weight:bold;">${statusText}</span> です（変更なし）`;
+}
+function updateLogToFailure(uniqueId, id) {
+  const logItem = document.getElementById(uniqueId);
+  if (!logItem) return;
+  logItem.style.borderLeft = "4px solid #dc3545";
+  logItem.innerHTML = `<span style="color:#dc3545; font-weight:bold;">⚠️ 【${id}番】 の通信に失敗しました</span>`;
+}
+
+// 💡【同期ボタン専用の個別ログ関数】
+function addSyncLogMessage(isChanged) {
+  const container = document.getElementById("action-log-container");
+  if (!container) return;
+
+  const now = new Date();
+  const formattedDate = `${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const logItem = document.createElement("div");
+  logItem.style.padding = "6px 10px";
+  logItem.style.backgroundColor = "#f0f8ff"; // 同期ログは区別しやすいように薄い青背景
+  logItem.style.borderRadius = "4px";
+  logItem.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
+
+  if (isChanged) {
+    // 💡 スプレッドシート側と画面にズレがあり、新しく更新された場合のログ
+    logItem.style.borderLeft = "4px solid #007bff";
+    logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> 🔄 <span style="color:#007bff; font-weight:bold;">リストを最新情報へ同期完了！</span>`;
+  } else {
+    // 💡 すでに画面のリストが最新で、何も変わらなかった場合のログ
+    logItem.style.borderLeft = "4px solid #17a2b8";
+    logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> ✨ <span style="color:#17a2b8; font-weight:bold;">リストはすでに最新状態です</span>`;
+  }
+
+  container.insertBefore(logItem, container.firstChild);
+  if (container.children.length > 5) container.lastChild.remove();
+}
+
+// 運営側：現在進行中の番号リストを読み込んで表示する関数（手動同期対応版）
+// 💡 引数（isManualClick）が true のときだけ「同期ボタン用」の賢いログを流します
+function loadProgressLists(isManualClick = true) {
   const makingList = document.getElementById("making-list");
   const doneList = document.getElementById("done-list");
-  
   if (!makingList || !doneList) return;
-
-  // 💡 リストの中身だけでなく、残ってしまったゴミ要素も完全に全消しする
-  makingList.innerHTML = "";
-  doneList.innerHTML = "";
 
   fetch(`${API_URL}?all=true`)
     .then(res => res.json())
     .then(data => {
-      if (data.error || !Array.isArray(data)) {
-        console.error("リスト読み込みエラー:", data.error);
+      // 💡【新機能】判定用に、届いた最新のJSONデータを一度「文字（String）」に変えて記憶と比較する
+      const currentDataString = JSON.stringify(data);
+      let hasChanges = (currentDataString !== lastProgressDataString);
+      
+      // 今回の状態を次回のために記憶
+      lastProgressDataString = currentDataString;
+
+      makingList.innerHTML = "";
+      doneList.innerHTML = "";
+
+      // 💡 リストが空っぽのときの親切メッセージ表示
+      if (data.error || (!data.making && !data.done)) {
+        makingList.innerHTML = "<span style='color:#aaa; font-size:0.9rem; font-weight:normal;'>現在、製作中の注文はありません</span>";
+        doneList.innerHTML = "<span style='color:#aaa; font-size:0.9rem; font-weight:normal;'>現在、お呼び出し中の注文はありません</span>";
+        if (isManualClick) addSyncLogMessage(hasChanges);
         return;
       }
 
-      data.forEach(item => {
-        if (!item || !item.id) return; // 空データ対策
-
-        const li = document.createElement("li");
-        li.innerText = `番号 【${item.id}】`;
-
-        if (item.status === "making") {
+      if (data.making) {
+        data.making.split(",").forEach(id => {
+          const li = document.createElement("li");
+          li.innerText = `番号 【${id}】`;
           makingList.appendChild(li);
-        } else if (item.status === "done") {
+        });
+      } else {
+        makingList.innerHTML = "<span style='color:#aaa; font-size:0.9rem; font-weight:normal;'>現在、製作中の注文はありません</span>";
+      }
+
+      if (data.done) {
+        data.done.split(",").forEach(id => {
+          const li = document.createElement("li");
+          li.innerText = `番号 【${id}】`;
           doneList.appendChild(li);
-        }
-      });
+        });
+      } else {
+        doneList.innerHTML = "<span style='color:#aaa; font-size:0.9rem; font-weight:normal;'>現在、お呼び出し中の注文はありません</span>";
+      }
+
+      // 💡 手動で同期ボタンが押されたときだけ、最新か更新かのログを流す
+      if (isManualClick) {
+        addSyncLogMessage(hasChanges);
+      }
     })
     .catch(err => {
       console.error("リスト同期エラー:", err);
+      if (isManualClick) alert("同期に失敗しました。ネット環境を確認してください。");
     });
 }
-
-//
-// お客様側：現在進行中の番号リストを読み込んで表示する関数（くるくるスピナー連動版）
-//
-function loadCustomerLists() {
+// お客様側：現在進行中の番号リストを読み込んで表示する関数
+function loadCustomerLists(showSpinner) {
   const refreshBtn = document.getElementById("refresh-btn");
   const spinner = document.getElementById("loading-spinner");
   const doneList = document.getElementById("customer-done-list");
   const makingList = document.getElementById("customer-making-list");
 
-  // 1. ボタンを「更新中...」にして無効化し、くるくるを表示する
-  if (refreshBtn) {
-    refreshBtn.disabled = true;
-    refreshBtn.innerText = "🔄 更新中...";
+  if (showSpinner) {
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.innerText = "🔄 更新中...";
+    }
+    if (spinner) spinner.style.display = "block";
+    doneList.style.opacity = "0.5";
+    makingList.style.opacity = "0.5";
   }
-  if (spinner) {
-    spinner.style.display = "block"; // 💡 くるくるを表示！
-  }
-
-  // 読み込み中であることを伝えるため一瞬だけ薄くする
-  doneList.style.opacity = "0.5";
-  makingList.style.opacity = "0.5";
 
   fetch(`${API_URL}?all=true`)
     .then(res => {
@@ -180,46 +267,47 @@ function loadCustomerLists() {
       return res.json();
     })
     .then(data => {
-      if (data.error || !Array.isArray(data)) {
-        console.error("GASからのエラー:", data.error);
-        return;
-      }
-
       doneList.innerHTML = "";
       makingList.innerHTML = "";
 
-      data.forEach(item => {
-        if (!item || !item.id) return;
+      if (data.error) return;
 
-        const li = document.createElement("li");
-        li.innerText = item.id;
-
-        if (item.status === "done") {
+      // 💡 超軽量テキスト（カンマ区切り）を綺麗に分解してリストを復元します
+      if (data.done) {
+        data.done.split(",").forEach(id => {
+          const li = document.createElement("li");
+          li.innerText = id;
           li.style.border = "2px solid #00cc66";
           li.style.borderRadius = "5px";
           li.style.padding = "5px 15px";
           li.style.backgroundColor = "white";
           doneList.appendChild(li);
-        } else if (item.status === "making") {
+        });
+      } else {
+        doneList.innerHTML = "<span style='color:#aaa; font-size:1rem; font-weight:normal; width:100%; margin:10px 0;'>ただいまお呼び出し中の番号はありません</span>";
+      }
+
+      if (data.making) {
+        data.making.split(",").forEach(id => {
+          const li = document.createElement("li");
+          li.innerText = id;
           li.style.border = "2px solid #ff9900";
           li.style.borderRadius = "5px";
           li.style.padding = "5px 15px";
           li.style.backgroundColor = "#fff9f0"; 
           makingList.appendChild(li);
-        }
-      });
+        });
+      } else {
+        makingList.innerHTML = "<span style='color:#aaa; font-size:1rem; font-weight:normal; width:100%; margin:10px 0;'>ただいま製作中の注文はありません</span>";
+      }
     })
     .catch(err => {
-      // 404エラーは無視
+      // 404エラー等は自動リトライされるため無視
     })
     .finally(() => {
-      // 2. 通信が終わったらリストを明るくし、くるくるを非表示にする
       doneList.style.opacity = "1";
       makingList.style.opacity = "1";
-
-      if (spinner) {
-        spinner.style.display = "none"; // 💡 くるくるを消す！
-      }
+      if (spinner) spinner.style.display = "none";
       if (refreshBtn) {
         refreshBtn.disabled = false;
         refreshBtn.innerText = "🔄 今すぐ更新する";

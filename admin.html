@@ -22,17 +22,30 @@
     <button onclick="updateStatus('done')">完成</button>
     <button onclick="updateStatus('delivered')">お渡し</button>
   </div>
-<div id="progress-container" style="margin-top: 20px; display: flex; gap: 20px;">
-  <div style="flex: 1; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
-    <h3>🛠️ 製作中リスト</h3>
-    <ul id="making-list" style="font-size: 1.2rem; font-weight: bold; color: #ff9900;"></ul>
+<!-- 💡 3列（製作中・完成・操作ログ）が横並びになるように調整しました -->
+  <div id="progress-container" style="margin-top: 20px; display: flex; gap: 15px; width: 100%; max-width: 1200px;">
+    
+    <!-- 1列目：製作中 -->
+    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
+      <h3 style="margin-top: 0; border-bottom: 2px solid #ff9900; padding-bottom: 5px;">🛠️ 製作中</h3>
+      <ul id="making-list" style="font-size: 1.2rem; font-weight: bold; color: #ff9900; padding-left: 20px; margin: 0;"></ul>
+    </div>
+    
+    <!-- 2列目：完成 -->
+    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
+      <h3 style="margin-top: 0; border-bottom: 2px solid #00cc66; padding-bottom: 5px;">🎉 完成</h3>
+      <ul id="done-list" style="font-size: 1.2rem; font-weight: bold; color: #00cc66; padding-left: 20px; margin: 0;"></ul>
+    </div>
+
+    <!-- 💡 3列目追加：最新の操作ログ（タブレットで見やすい流れる履歴） -->
+    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #f9f9f9;">
+      <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 5px; color: #007bff;">📋 操作ログ（こちらの方が少し早いよ）</h3>
+      <div id="action-log-container" style="font-size: 1rem; color: #333; display: flex; flex-direction: column; gap: 8px;">
+        <!-- ここに「n番 を m状態へ」という文字が上から新しい順に挿入されます -->
+      </div>
+    </div>
+
   </div>
-  
-  <div style="flex: 1; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
-    <h3>🎉 完成リスト</h3>
-    <ul id="done-list" style="font-size: 1.2rem; font-weight: bold; color: #00cc66;"></ul>
-  </div>
-</div>
 <div id="lock-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #333; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
   <h2>🔒 運営専用ログイン</h2>
   <input type="password" id="admin-pass" placeholder="パスワードを入力" style="padding: 10px; font-size: 1.2rem; border-radius: 5px; border: none; text-align: center; margin-bottom: 15px;">
