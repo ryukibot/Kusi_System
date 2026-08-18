@@ -20,16 +20,6 @@ function checkPassword() {
   }
 }
 
-// 画面が開かれたときの初期処理
-window.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("customer-done-list")) {
-    // お客様画面を開いた直後：くるくるを出さずに、静かに即座に1回読み込む
-    loadCustomerLists(false);
-    // その後は「6秒ごと」に、くるくるを出さずに自動更新する（安全・省エネ設定）
-    setInterval(() => { loadCustomerLists(false); }, 6000); 
-  }
-});
-
 // オリジナルテンキーのボタンが押されたときに動く関数
 function pressKey(key) {
   let inputElement = document.getElementById("num");
@@ -66,9 +56,7 @@ function updateStatus(status) {
   const isDuplicate = requestQueue.some(req => req.id === id && req.status === status);
   if (isDuplicate) return;
 
-  // ボタンを押した瞬間に画面の文字をクリア（次の入力へ）
   inputElement.value = "";
-
   const uniqueId = "req-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   addWaitingLogMessage(uniqueId, id, status);
   requestQueue.push({ uniqueId: uniqueId, id: id, status: status });
@@ -239,7 +227,18 @@ function loadProgressLists(isManualClick = true) {
     });
 }
 
-// お客様側：現在進行中の番号リストを読み込んで表示する関数
+// 💡 画面が開かれたときの初期処理（ランダム時間差読み込み搭載）
+window.addEventListener("DOMContentLoaded", () => {
+  if (document.getElementById("customer-done-list")) {
+    const randomDelay = Math.floor(Math.random() * 1300) + 200; 
+    setTimeout(() => {
+      loadCustomerLists(false);
+      setInterval(() => { loadCustomerLists(false); }, 15000); 
+    }, randomDelay);
+  }
+});
+
+// お客様側：現在進行中の番号リストを読み込んで表示する関数（手動3秒ロックガード搭載）
 function loadCustomerLists(showSpinner) {
   const refreshBtn = document.getElementById("refresh-btn");
   const spinner = document.getElementById("loading-spinner");
@@ -250,6 +249,7 @@ function loadCustomerLists(showSpinner) {
     if (refreshBtn) {
       refreshBtn.disabled = true;
       refreshBtn.innerText = "🔄 更新中...";
+      refreshBtn.style.opacity = "0.6";
     }
     if (spinner) spinner.style.display = "block";
     doneList.style.opacity = "0.5";
@@ -260,14 +260,13 @@ function loadCustomerLists(showSpinner) {
     .then(res => {
       if (!res.ok) throw new Error("ネットワークエラー");
       return res.json();
-        })
+    })
     .then(data => {
       doneList.innerHTML = "";
       makingList.innerHTML = "";
 
       if (data.error) return;
 
-      // 超軽量テキスト（カンマ区切り）を綺麗に分解して枠付きリストを復元
       if (data.done) {
         data.done.split(",").forEach(id => {
           const li = document.createElement("li");
@@ -297,15 +296,26 @@ function loadCustomerLists(showSpinner) {
       }
     })
     .catch(err => {
-      // 自動リトライされるため404エラー等は無視
+      // 自動リトライされるため無視
     })
     .finally(() => {
       doneList.style.opacity = "1";
       makingList.style.opacity = "1";
       if (spinner) spinner.style.display = "none";
-      if (refreshBtn) {
-        refreshBtn.disabled = false;
-        refreshBtn.innerText = "🔄 今すぐ更新する";
+
+      if (showSpinner && refreshBtn) {
+        refreshBtn.innerText = "⏳ 3秒お待ちください...";
+        setTimeout(() => {
+          refreshBtn.disabled = false;
+          refreshBtn.innerText = "🔄 今すぐ更新する";
+          refreshBtn.style.opacity = "1";
+        }, 3000); 
+      } else {
+        if (refreshBtn && !refreshBtn.disabled) {
+          refreshBtn.disabled = false;
+          refreshBtn.innerText = "🔄 今すぐ更新する";
+          refreshBtn.style.opacity = "1";
+        }
       }
     });
 }
