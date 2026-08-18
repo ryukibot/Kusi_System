@@ -4,53 +4,95 @@
   <meta charset="UTF-8">
   <title>管理画面</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
-    input { font-size: 16px; padding: 5px; }
+    body { font-family: sans-serif; padding: 20px; background-color: #f4f6f9; }
+    button { font-size: 16px; cursor: pointer; }
+    
+    /* 📋 テンキーのレイアウト設定 */
+    .tenkey-container {
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      gap: 10px;
+      margin-top: 15px;
+      margin-bottom: 20px;
+    }
+    .tenkey-btn {
+      height: 60px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .tenkey-btn:active {
+      background-color: #e9ecef;
+    }
+    .tenkey-clear {
+      background-color: #ffc107;
+      color: #333;
+    }
+    .tenkey-delete {
+      background-color: #e2e6ea;
+      color: #333;
+    }
   </style>
 </head>
 <body>
   <h1>管理画面（運営用）</h1>
-  <button onclick="loadProgressLists()" style="background-color: #6c757d; color: white; border: none; padding: 8px 15px; font-size: 0.9rem; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 15px; display: block;">
-  🔄 リストを最新に同期する
-  </button>
-  <label>番号：</label>
-  <input id="num" type="number">
+  
+  <label style="font-size: 1.1rem; font-weight: bold;">番号：</label>
+  <!-- 💡 inputmode="none" をつけることで、タブレットの標準キーボードが立ち上がるのを防ぎます -->
+  <input id="num" type="text" inputmode="none" readonly style="font-size: 2rem; padding: 5px 10px; width: 120px; text-align: center; border-radius: 8px; border: 2px solid #007bff; background-color: #fff;">
+
+  <!-- 💡 追加：オリジナルテンキーエリア -->
+  <div class="tenkey-container">
+    <button class="tenkey-btn" onclick="pressKey('1')">1</button>
+    <button class="tenkey-btn" onclick="pressKey('2')">2</button>
+    <button class="tenkey-btn" onclick="pressKey('3')">3</button>
+    <button class="tenkey-btn" onclick="pressKey('4')">4</button>
+    <button class="tenkey-btn" onclick="pressKey('5')">5</button>
+    <button class="tenkey-btn" onclick="pressKey('6')">6</button>
+    <button class="tenkey-btn" onclick="pressKey('7')">7</button>
+    <button class="tenkey-btn" onclick="pressKey('8')">8</button>
+    <button class="tenkey-btn" onclick="pressKey('9')">9</button>
+    <button class="tenkey-btn tenkey-clear" onclick="pressKey('AC')">AC</button>
+    <button class="tenkey-btn" onclick="pressKey('0')">0</button>
+    <button class="tenkey-btn tenkey-delete" onclick="pressKey('⌫')">⌫</button>
+  </div>
 
   <div style="margin-top: 20px;">
-    <button onclick="updateStatus('making')">製作中</button>
-    <button onclick="updateStatus('done')">完成</button>
-    <button onclick="updateStatus('delivered')">お渡し</button>
+    <button onclick="updateStatus('making')" style="background-color: #ff9900; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-right: 10px;">製作中</button>
+    <button onclick="updateStatus('done')" style="background-color: #00cc66; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-right: 10px;">完成</button>
+    <button onclick="updateStatus('delivered')" style="background-color: #6c757d; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">お渡し</button>
   </div>
-<!-- 💡 3列（製作中・完成・操作ログ）が横並びになるように調整しました -->
+
+  <button onclick="loadProgressLists()" style="background-color: #007bff; color: white; border: none; padding: 8px 15px; font-size: 0.9rem; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; display: block;">
+    🔄 リストを最新に同期する
+  </button>
+
   <div id="progress-container" style="margin-top: 20px; display: flex; gap: 15px; width: 100%; max-width: 1200px;">
-    
-    <!-- 1列目：製作中 -->
     <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
       <h3 style="margin-top: 0; border-bottom: 2px solid #ff9900; padding-bottom: 5px;">🛠️ 製作中</h3>
       <ul id="making-list" style="font-size: 1.2rem; font-weight: bold; color: #ff9900; padding-left: 20px; margin: 0;"></ul>
     </div>
     
-    <!-- 2列目：完成 -->
     <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
       <h3 style="margin-top: 0; border-bottom: 2px solid #00cc66; padding-bottom: 5px;">🎉 完成</h3>
       <ul id="done-list" style="font-size: 1.2rem; font-weight: bold; color: #00cc66; padding-left: 20px; margin: 0;"></ul>
     </div>
 
-    <!-- 💡 3列目追加：最新の操作ログ（タブレットで見やすい流れる履歴） -->
     <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #f9f9f9;">
-      <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 5px; color: #007bff;">📋 操作ログ（こちらの方が少し早いよ）</h3>
-      <div id="action-log-container" style="font-size: 1rem; color: #333; display: flex; flex-direction: column; gap: 8px;">
-        <!-- ここに「n番 を m状態へ」という文字が上から新しい順に挿入されます -->
-      </div>
+      <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 5px; color: #007bff;">📋 操作ログ（最新5件）</h3>
+      <div id="action-log-container" style="font-size: 1rem; color: #333; display: flex; flex-direction: column; gap: 8px;"></div>
     </div>
-
   </div>
-<div id="lock-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #333; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
-  <h2>🔒 運営専用ログイン</h2>
-  <input type="password" id="admin-pass" placeholder="パスワードを入力" style="padding: 10px; font-size: 1.2rem; border-radius: 5px; border: none; text-align: center; margin-bottom: 15px;">
-  <button onclick="checkPassword()" style="padding: 10px 20px; font-size: 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">認証する</button>
-</div>
+
+  <div id="lock-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #333; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
+    <h2>🔒 運営専用ログイン</h2>
+    <input type="password" id="admin-pass" placeholder="パスワードを入力" style="padding: 10px; font-size: 1.2rem; border-radius: 5px; border: none; text-align: center; margin-bottom: 15px;">
+    <button onclick="checkPassword()" style="padding: 10px 20px; font-size: 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">認証する</button>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
