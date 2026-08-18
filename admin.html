@@ -1,96 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>管理画面</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面（運営用）</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background-color: #f4f6f9; }
-    button { font-size: 16px; cursor: pointer; }
+    * { box-sizing: border-box; }
+    body { font-family: sans-serif; padding: 20px; background-color: #f4f6f9; margin: 0; }
     
-    /* 📋 テンキーのレイアウト設定 */
-    .tenkey-container {
-      display: grid;
-      grid-template-columns: repeat(3, 70px);
-      gap: 10px;
-      margin-top: 15px;
-      margin-bottom: 20px;
+    .admin-container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; color: #333; margin-top: 10px; }
+    
+    .input-section { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: inline-block; width: 100%; max-width: 270px; }
+    label { font-size: 1.1rem; font-weight: bold; color: #555; display: block; margin-bottom: 8px; }
+    input#num { font-size: 2rem; padding: 8px; width: 100%; text-align: center; border-radius: 8px; border: 2px solid #007bff; background-color: #fff; }
+
+    /* 📋 テンキーのレスポンシブ設定 */
+    .tenkey-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+    .tenkey-btn { height: 55px; font-size: 1.4rem; font-weight: bold; background-color: #ffffff; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
+    .tenkey-btn:active { background-color: #e9ecef; }
+    .tenkey-clear { background-color: #ffc107; color: #333; }
+    .tenkey-delete { background-color: #e2e6ea; color: #333; }
+
+    /* 📋 状態変更ボタンの設定 */
+    .status-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .status-actions button { flex: 1; min-width: 80px; height: 50px; font-size: 1.1rem; font-weight: bold; color: white; border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
+    .btn-making { background-color: #ff9900; }
+    .btn-done { background-color: #00cc66; }
+    .btn-delivered { background-color: #6c757d; }
+    .status-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .sync-btn { background-color: #007bff; color: white; border: none; padding: 10px 20px; font-size: 1rem; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%; max-width: 270px; }
+
+    /* 📋 下部リストのレスポンシブ（大画面で3列、スマホで1列） */
+    .progress-box-container { margin-top: 25px; display: flex; flex-direction: column; gap: 15px; width: 100%; }
+    .progress-column { flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 10px; background-color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+    .progress-column h3 { margin-top: 0; padding-bottom: 8px; font-size: 1.2rem; }
+    .progress-column ul { font-size: 1.2rem; font-weight: bold; padding-left: 20px; margin: 0; }
+    #action-log-container { display: flex; flex-direction: column; gap: 8px; }
+
+    @media (min-width: 768px) {
+      .progress-box-container { flex-direction: row; }
     }
-    .tenkey-btn {
-      height: 60px;
-      font-size: 1.5rem;
-      font-weight: bold;
-      background-color: #ffffff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .tenkey-btn:active {
-      background-color: #e9ecef;
-    }
-    .tenkey-clear {
-      background-color: #ffc107;
-      color: #333;
-    }
-    .tenkey-delete {
-      background-color: #e2e6ea;
-      color: #333;
-    }
+
+    /* 📋 認証ロック画面 */
+    #lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #333; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+    #admin-pass { padding: 12px; font-size: 1.3rem; border-radius: 8px; border: none; text-align: center; margin-bottom: 15px; width: 100%; max-width: 260px; }
+    #lock-screen button { padding: 12px 30px; font-size: 1.1rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; width: 100%; max-width: 260px; }
   </style>
 </head>
 <body>
-  <h1>管理画面（運営用）</h1>
-  
-  <label style="font-size: 1.1rem; font-weight: bold;">番号：</label>
-  <!-- 💡 inputmode="none" をつけることで、タブレットの標準キーボードが立ち上がるのを防ぎます -->
-  <input id="num" type="text" inputmode="none" readonly style="font-size: 2rem; padding: 5px 10px; width: 120px; text-align: center; border-radius: 8px; border: 2px solid #007bff; background-color: #fff;">
-
-  <!-- 💡 追加：オリジナルテンキーエリア -->
-  <div class="tenkey-container">
-    <button class="tenkey-btn" onclick="pressKey('1')">1</button>
-    <button class="tenkey-btn" onclick="pressKey('2')">2</button>
-    <button class="tenkey-btn" onclick="pressKey('3')">3</button>
-    <button class="tenkey-btn" onclick="pressKey('4')">4</button>
-    <button class="tenkey-btn" onclick="pressKey('5')">5</button>
-    <button class="tenkey-btn" onclick="pressKey('6')">6</button>
-    <button class="tenkey-btn" onclick="pressKey('7')">7</button>
-    <button class="tenkey-btn" onclick="pressKey('8')">8</button>
-    <button class="tenkey-btn" onclick="pressKey('9')">9</button>
-    <button class="tenkey-btn tenkey-clear" onclick="pressKey('AC')">AC</button>
-    <button class="tenkey-btn" onclick="pressKey('0')">0</button>
-    <button class="tenkey-btn tenkey-delete" onclick="pressKey('⌫')">⌫</button>
-  </div>
-
-  <div style="margin-top: 20px;">
-    <button onclick="updateStatus('making')" style="background-color: #ff9900; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-right: 10px;">製作中</button>
-    <button onclick="updateStatus('done')" style="background-color: #00cc66; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-right: 10px;">完成</button>
-    <button onclick="updateStatus('delivered')" style="background-color: #6c757d; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">お渡し</button>
-  </div>
-
-  <button onclick="loadProgressLists()" style="background-color: #007bff; color: white; border: none; padding: 8px 15px; font-size: 0.9rem; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; display: block;">
-    🔄 リストを最新に同期する
-  </button>
-
-  <div id="progress-container" style="margin-top: 20px; display: flex; gap: 15px; width: 100%; max-width: 1200px;">
-    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
-      <h3 style="margin-top: 0; border-bottom: 2px solid #ff9900; padding-bottom: 5px;">🛠️ 製作中</h3>
-      <ul id="making-list" style="font-size: 1.2rem; font-weight: bold; color: #ff9900; padding-left: 20px; margin: 0;"></ul>
-    </div>
+  <div class="admin-container">
+    <h1>管理画面（運営用）</h1>
     
-    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #fff;">
-      <h3 style="margin-top: 0; border-bottom: 2px solid #00cc66; padding-bottom: 5px;">🎉 完成</h3>
-      <ul id="done-list" style="font-size: 1.2rem; font-weight: bold; color: #00cc66; padding-left: 20px; margin: 0;"></ul>
+    <div class="input-section">
+      <label>番号を入力：</label>
+      <input id="num" type="text" inputmode="none" readonly placeholder="0">
+      
+      <div class="tenkey-container">
+        <button class="tenkey-btn" onclick="pressKey('1')">1</button>
+        <button class="tenkey-btn" onclick="pressKey('2')">2</button>
+        <button class="tenkey-btn" onclick="pressKey('3')">3</button>
+        <button class="tenkey-btn" onclick="pressKey('4')">4</button>
+        <button class="tenkey-btn" onclick="pressKey('5')">5</button>
+        <button class="tenkey-btn" onclick="pressKey('6')">6</button>
+        <button class="tenkey-btn" onclick="pressKey('7')">7</button>
+        <button class="tenkey-btn" onclick="pressKey('8')">8</button>
+        <button class="tenkey-btn" onclick="pressKey('9')">9</button>
+        <button class="tenkey-btn tenkey-clear" onclick="pressKey('AC')">AC</button>
+        <button class="tenkey-btn" onclick="pressKey('0')">0</button>
+        <button class="tenkey-btn tenkey-delete" onclick="pressKey('⌫')">⌫</button>
+      </div>
     </div>
 
-    <div style="flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 8px; background-color: #f9f9f9;">
-      <h3 style="margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 5px; color: #007bff;">📋 操作ログ（最新5件）</h3>
-      <div id="action-log-container" style="font-size: 1rem; color: #333; display: flex; flex-direction: column; gap: 8px;"></div>
+    <div class="status-actions">
+      <button class="btn-making" onclick="updateStatus('making')">製作中</button>
+      <button class="btn-done" onclick="updateStatus('done')">完成</button>
+      <button class="btn-delivered" onclick="updateStatus('delivered')">お渡し</button>
+    </div>
+
+    <button class="sync-btn" onclick="loadProgressLists()">🔄 リストを最新に同期する</button>
+
+    <div class="progress-box-container">
+      <div class="progress-column">
+        <h3 style="border-bottom: 2px solid #ff9900; color: #e68a00;">🛠️ 製作中</h3>
+        <ul id="making-list" style="color: #ff9900;"></ul>
+      </div>
+      
+      <div class="progress-column">
+        <h3 style="border-bottom: 2px solid #00cc66; color: #00b359;">🎉 完成</h3>
+        <ul id="done-list" style="color: #00cc66;"></ul>
+      </div>
+
+      <div class="progress-column" style="background-color: #f9f9f9;">
+        <h3 style="border-bottom: 2px solid #007bff; color: #007bff;">📋 操作ログ（最新5件）</h3>
+        <div id="action-log-container"></div>
+      </div>
     </div>
   </div>
 
-  <div id="lock-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #333; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
+  <div id="lock-screen">
     <h2>🔒 運営専用ログイン</h2>
-    <input type="password" id="admin-pass" placeholder="パスワードを入力" style="padding: 10px; font-size: 1.2rem; border-radius: 5px; border: none; text-align: center; margin-bottom: 15px;">
-    <button onclick="checkPassword()" style="padding: 10px 20px; font-size: 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">認証する</button>
+    <input type="password" id="admin-pass" placeholder="パスワードを入力">
+    <button onclick="checkPassword()">認証する</button>
   </div>
 
   <script src="script.js"></script>

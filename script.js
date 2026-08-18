@@ -23,37 +23,33 @@ function checkPassword() {
 // 画面が開かれたときの初期処理
 window.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("customer-done-list")) {
+    // お客様画面を開いた直後：くるくるを出さずに、静かに即座に1回読み込む
     loadCustomerLists(false);
+    // その後は「6秒ごと」に、くるくるを出さずに自動更新する（安全・省エネ設定）
     setInterval(() => { loadCustomerLists(false); }, 6000); 
   }
 });
 
-// 💡【新機能】オリジナルテンキーのボタンが押されたときに動く関数
+// オリジナルテンキーのボタンが押されたときに動く関数
 function pressKey(key) {
   let inputElement = document.getElementById("num");
   if (!inputElement) return;
 
   if (key === "AC") {
-    // すべて消去
     inputElement.value = "";
   } else if (key === "⌫") {
-    // 1文字消去
     inputElement.value = inputElement.value.slice(0, -1);
   } else {
-    // 桁あふれ防止（文化祭の番号は最大2桁なので、3桁以上は入力させない）
-    if (inputElement.value.length >= 2) return;
-    
-    // 数字を末尾に追加
+    if (inputElement.value.length >= 2) return; // 3桁以上は入力させない
     inputElement.value += key;
   }
 }
 
-// 運営側：状態を更新する関数（テンキー入力最適化版）
+// 運営側：状態を更新する関数
 function updateStatus(status) {
   let inputElement = document.getElementById("num");
   let rawValue = inputElement.value;
 
-  // テンキー入力のため不要な全角補正などは削除し、超軽量化
   if (!rawValue) {
     alert("有効な「数字（番号）」を入力してください");
     return;
@@ -61,10 +57,9 @@ function updateStatus(status) {
 
   const id = Number(rawValue);
 
-  // 1から40以外の数字を弾く（40番まで制限）
   if (id < 1 || id > 40) {
     alert("エラー：番号は 1番 から 40番 の間で入力してください！");
-    inputElement.value = ""; // 入力欄をクリア
+    inputElement.value = "";
     return;
   }
 
@@ -138,7 +133,8 @@ function addWaitingLogMessage(uniqueId, id, status) {
   logItem.style.borderLeft = "4px solid #6c757d";
   logItem.style.borderRadius = "4px";
   logItem.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
-  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${timeStr}]</span> <strong>【${id}番】</strong> を ${statusText} へ <span style="color:#6c757d; font-weight:bold;">⌛ 待機中...</span>`;
+  logItem.style.fontSize = "0.95rem";
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.8rem; margin-right:6px;">[${timeStr}]</span> <strong>【${id}番】</strong> を ${statusText} へ <span style="color:#6c757d; font-weight:bold;">⌛ 待機中...</span>`;
   container.insertBefore(logItem, container.firstChild);
   if (container.children.length > 5) container.lastChild.remove();
 }
@@ -156,7 +152,7 @@ function updateLogToSuccess(uniqueId, id, status) {
   const now = new Date();
   const formattedDate = `${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   logItem.style.borderLeft = `4px solid ${statusColor}`;
-  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> <strong>【${id}番】</strong> を <span style="color:${statusColor}; font-weight:bold;">${statusText}状態へ完了</span>`;
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.8rem; margin-right:6px;">[${formattedDate}]</span> <strong>【${id}番】</strong> を <span style="color:${statusColor}; font-weight:bold;">${statusText}状態へ完了</span>`;
 }
 function updateLogToAlreadyLatest(uniqueId, id, status) {
   const logItem = document.getElementById(uniqueId);
@@ -165,7 +161,7 @@ function updateLogToAlreadyLatest(uniqueId, id, status) {
   const now = new Date();
   const formattedDate = `${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   logItem.style.borderLeft = "4px solid #adb5bd"; 
-  logItem.innerHTML = `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> <strong>【${id}番】</strong> はすでに <span style="color:#6c757d; font-weight:bold;">${statusText}</span> です（変更なし）`;
+  logItem.innerHTML = `<span style="color:#aaa; font-size:0.8rem; margin-right:6px;">[${formattedDate}]</span> <strong>【${id}番】</strong> はすでに <span style="color:#6c757d; font-weight:bold;">${statusText}</span> です（変更なし）`;
 }
 function updateLogToFailure(uniqueId, id) {
   const logItem = document.getElementById(uniqueId);
@@ -185,9 +181,10 @@ function addSyncLogMessage(isChanged) {
   logItem.style.borderLeft = isChanged ? "4px solid #007bff" : "4px solid #17a2b8";
   logItem.style.borderRadius = "4px";
   logItem.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
+  logItem.style.fontSize = "0.95rem";
   logItem.innerHTML = isChanged ? 
-    `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> 🔄 <span style="color:#007bff; font-weight:bold;">リストを最新情報へ同期完了！</span>` :
-    `<span style="color:#aaa; font-size:0.85rem; margin-right:8px;">[${formattedDate}]</span> ✨ <span style="color:#17a2b8; font-weight:bold;">リストはすでに最新状態です</span>`;
+    `<span style="color:#aaa; font-size:0.8rem; margin-right:6px;">[${formattedDate}]</span> 🔄 <span style="color:#007bff; font-weight:bold;">リストを最新情報へ同期完了！</span>` :
+    `<span style="color:#aaa; font-size:0.8rem; margin-right:6px;">[${formattedDate}]</span> ✨ <span style="color:#17a2b8; font-weight:bold;">リストはすでに最新状態です</span>`;
   container.insertBefore(logItem, container.firstChild);
   if (container.children.length > 5) container.lastChild.remove();
 }
@@ -263,7 +260,7 @@ function loadCustomerLists(showSpinner) {
     .then(res => {
       if (!res.ok) throw new Error("ネットワークエラー");
       return res.json();
-    })
+        })
     .then(data => {
       doneList.innerHTML = "";
       makingList.innerHTML = "";
@@ -300,7 +297,7 @@ function loadCustomerLists(showSpinner) {
       }
     })
     .catch(err => {
-      // 404エラー等は自動リトライされるため無視
+      // 自動リトライされるため404エラー等は無視
     })
     .finally(() => {
       doneList.style.opacity = "1";
