@@ -1,6 +1,6 @@
 // 【重要】ここにあなたの最新の GAS ウェブアプリ URL を貼り付けてください
 const API_URL = "https://script.google.com/macros/s/AKfycbwBCl08U2-km97ObWfRmqZ6vioS2Y7kVEHF9TtSknmPK1_csWJypwunfKyTIchuzqXPUg/exec";
-const ADMIN_PASSWORD = "kusi1114"; 
+onst ADMIN_PASSWORD = "kusi1114"; 
 
 // 順番待ち（キュー）のための配列と状態管理
 let requestQueue = [];
@@ -106,7 +106,6 @@ function processNextRequest() {
     }, 500);
   });
 }
-
 // 運営側：ログ追加・書き換え関数群
 function addWaitingLogMessage(uniqueId, id, status) {
   const container = document.getElementById("action-log-container");
@@ -227,18 +226,20 @@ function loadProgressLists(isManualClick = true) {
     });
 }
 
-// 💡 画面が開かれたときの初期処理（ランダム時間差読み込み搭載）
+// 💡【お客様画面：初期処理】初め・再度開いた時に0.5秒くるくるさせて更新する
 window.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("customer-done-list")) {
-    const randomDelay = Math.floor(Math.random() * 1300) + 200; 
+    // 1. 開いた瞬間に、くるくる（true）を出して0.5秒（500ms）待ってから読み込む
     setTimeout(() => {
-      loadCustomerLists(false);
-      setInterval(() => { loadCustomerLists(false); }, 15000); 
-    }, randomDelay);
+      loadCustomerLists(true);
+      
+      // 2. その後は、くるくるを出さずに（false）、「13秒おき」に定期更新する
+      setInterval(() => { loadCustomerLists(false); }, 13000); 
+    }, 500);
   }
 });
 
-// お客様側：現在進行中の番号リストを読み込んで表示する関数（手動3秒ロックガード搭載）
+// お客様側：現在進行中の番号リストを読み込んで表示する関数
 function loadCustomerLists(showSpinner) {
   const refreshBtn = document.getElementById("refresh-btn");
   const spinner = document.getElementById("loading-spinner");
@@ -248,8 +249,7 @@ function loadCustomerLists(showSpinner) {
   if (showSpinner) {
     if (refreshBtn) {
       refreshBtn.disabled = true;
-      refreshBtn.innerText = "🔄 更新中...";
-      refreshBtn.style.opacity = "0.6";
+      refreshBtn.style.opacity = "0.6"; 
     }
     if (spinner) spinner.style.display = "block";
     doneList.style.opacity = "0.5";
@@ -304,16 +304,13 @@ function loadCustomerLists(showSpinner) {
       if (spinner) spinner.style.display = "none";
 
       if (showSpinner && refreshBtn) {
-        refreshBtn.innerText = "⏳ 3秒お待ちください...";
         setTimeout(() => {
           refreshBtn.disabled = false;
-          refreshBtn.innerText = "🔄 今すぐ更新する";
-          refreshBtn.style.opacity = "1";
-        }, 3000); 
+          refreshBtn.style.opacity = "1"; 
+        }, 3000); // 💡 ボタン操作後は3秒間灰色（無効化）をキープ
       } else {
         if (refreshBtn && !refreshBtn.disabled) {
           refreshBtn.disabled = false;
-          refreshBtn.innerText = "🔄 今すぐ更新する";
           refreshBtn.style.opacity = "1";
         }
       }
