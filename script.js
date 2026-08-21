@@ -1,6 +1,6 @@
 // 【重要】ここにあなたの最新の GAS ウェブアプリ URL を貼り付けてください
 const API_URL = "https://script.google.com/macros/s/AKfycbwBCl08U2-km97ObWfRmqZ6vioS2Y7kVEHF9TtSknmPK1_csWJypwunfKyTIchuzqXPUg/exec";
-onst ADMIN_PASSWORD = "kusi1114"; 
+const ADMIN_PASSWORD = "kusi1114"; 
 
 // 順番待ち（キュー）のための配列と状態管理
 let requestQueue = [];
